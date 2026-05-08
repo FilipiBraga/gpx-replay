@@ -1,0 +1,177 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gpx version="1.1" creator="GPX Replay - Example Route"
+ xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+ xmlns="http://www.topografix.com/GPX/1/1"
+ xsi:schemaLocation="http://www.topografix.com/GPX/1/1 http://www.topografix.com/GPX/1/1/gpx.xsd">
+  <metadata>
+    <name>Exemplo de Rota de Bike - São Paulo</name>
+    <desc>Rota de exemplo para testar o GPX Replay</desc>
+    <time>2024-05-07T08:00:00Z</time>
+  </metadata>
+  <trk>
+    <name>Rota Parque Ibirapuera</name>
+    <desc>Volta no Parque Ibirapuera</desc>
+    <trkseg>
+      <trkpt lat="-23.5890" lon="-46.6565">
+        <ele>745.0</ele>
+        <time>2024-05-07T08:00:00Z</time>
+      </trkpt>
+      <trkpt lat="-23.5885" lon="-46.6570">
+        <ele>746.0</ele>
+        <time>2024-05-07T08:00:30Z</time>
+      </trkpt>
+      <trkpt lat="-23.5880" lon="-46.6575">
+        <ele>747.0</ele>
+        <time>2024-05-07T08:01:00Z</time>
+      </trkpt>
+      <trkpt lat="-23.5875" lon="-46.6580">
+        <ele>748.0</ele>
+        <time>2024-05-07T08:01:30Z</time>
+      </trkpt>
+      <trkpt lat="-23.5870" lon="-46.6585">
+        <ele>749.0</ele>
+        <time>2024-05-07T08:02:00Z</time>
+      </trkpt>
+      <trkpt lat="-23.5865" lon="-46.6590">
+        <ele>750.0</ele>
+        <time>2024-05-07T08:02:30Z</time>
+      </trkpt>
+      <trkpt lat="-23.5860" lon="-46.6595">
+        <ele>751.0</ele>
+        <time>2024-05-07T08:03:00Z</time>
+      </trkpt>
+      <trkpt lat="-23.5855" lon="-46.6600">
+        <ele>752.0</ele>
+        <time>2024-05-07T08:03:30Z</time>
+      </trkpt>
+      <trkpt lat="-23.5850" lon="-46.6595">
+        <ele>751.5</ele>
+        <time>2024-05-07T08:04:00Z</time>
+      </trkpt>
+      <trkpt lat="-23.5845" lon="-46.6590">
+        <ele>751.0</ele>
+        <time>2024-05-07T08:04:30Z</time>
+      </trkpt>
+      <trkpt lat="-23.5840" lon="-46.6585">
+        <ele>750.0</ele>
+        <time>2024-05-07T08:05:00Z</time>
+      </trkpt>
+      <trkpt lat="-23.5835" lon="-46.6580">
+        <ele>749.0</ele>
+        <time>2024-05-07T08:05:30Z</time>
+      </trkpt>
+      <trkpt lat="-23.5830" lon="-46.6575">
+        <ele>748.0</ele>
+        <time>2024-05-07T08:06:00Z</time>
+      </trkpt>
+      <trkpt lat="-23.5825" lon="-46.6570">
+        <ele>747.0</ele>
+        <time>2024-05-07T08:06:30Z</time>
+      </trkpt>
+      <trkpt lat="-23.5820" lon="-46.6565">
+        <ele>746.0</ele>
+        <time>2024-05-07T08:07:00Z</time>
+      </trkpt>
+      <trkpt lat="-23.5815" lon="-46.6560">
+        <ele>745.5</ele>
+        <time>2024-05-07T08:07:30Z</time>
+      </trkpt>
+      <trkpt lat="-23.5810" lon="-46.6555">
+        <ele>745.0</ele>
+        <time>2024-05-07T08:08:00Z</time>
+      </trkpt>
+      <trkpt lat="-23.5805" lon="-46.6560">
+        <ele>745.5</ele>
+        <time>2024-05-07T08:08:30Z</time>
+      </trkpt>
+      <trkpt lat="-23.5800" lon="-46.6565">
+        <ele>746.0</ele>
+        <time>2024-05-07T08:09:00Z</time>
+      </trkpt>
+      <trkpt lat="-23.5795" lon="-46.6570">
+        <ele>746.5</ele>
+        <time>2024-05-07T08:09:30Z</time>
+      </trkpt>
+      <trkpt lat="-23.5800" lon="-46.6575">
+        <ele>747.0</ele>
+        <time>2024-05-07T08:10:00Z</time>
+      </trkpt>
+      <trkpt lat="-23.5805" lon="-46.6580">
+        <ele>747.5</ele>
+        <time>2024-05-07T08:10:30Z</time>
+      </trkpt>
+      <trkpt lat="-23.5810" lon="-46.6585">
+        <ele>748.0</ele>
+        <time>2024-05-07T08:11:00Z</time>
+      </trkpt>
+      <trkpt lat="-23.5815" lon="-46.6590">
+        <ele>748.5</ele>
+        <time>2024-05-07T08:11:30Z</time>
+      </trkpt>
+      <trkpt lat="-23.5820" lon="-46.6595">
+        <ele>749.0</ele>
+        <time>2024-05-07T08:12:00Z</time>
+      </trkpt>
+      <trkpt lat="-23.5825" lon="-46.6600">
+        <ele>749.5</ele>
+        <time>2024-05-07T08:12:30Z</time>
+      </trkpt>
+      <trkpt lat="-23.5830" lon="-46.6595">
+        <ele>749.0</ele>
+        <time>2024-05-07T08:13:00Z</time>
+      </trkpt>
+      <trkpt lat="-23.5835" lon="-46.6590">
+        <ele>748.5</ele>
+        <time>2024-05-07T08:13:30Z</time>
+      </trkpt>
+      <trkpt lat="-23.5840" lon="-46.6585">
+        <ele>748.0</ele>
+        <time>2024-05-07T08:14:00Z</time>
+      </trkpt>
+      <trkpt lat="-23.5845" lon="-46.6580">
+        <ele>747.5</ele>
+        <time>2024-05-07T08:14:30Z</time>
+      </trkpt>
+      <trkpt lat="-23.5850" lon="-46.6575">
+        <ele>747.0</ele>
+        <time>2024-05-07T08:15:00Z</time>
+      </trkpt>
+      <trkpt lat="-23.5855" lon="-46.6580">
+        <ele>747.5</ele>
+        <time>2024-05-07T08:15:30Z</time>
+      </trkpt>
+      <trkpt lat="-23.5860" lon="-46.6585">
+        <ele>748.0</ele>
+        <time>2024-05-07T08:16:00Z</time>
+      </trkpt>
+      <trkpt lat="-23.5865" lon="-46.6590">
+        <ele>748.5</ele>
+        <time>2024-05-07T08:16:30Z</time>
+      </trkpt>
+      <trkpt lat="-23.5870" lon="-46.6595">
+        <ele>749.0</ele>
+        <time>2024-05-07T08:17:00Z</time>
+      </trkpt>
+      <trkpt lat="-23.5875" lon="-46.6600">
+        <ele>749.5</ele>
+        <time>2024-05-07T08:17:30Z</time>
+      </trkpt>
+      <trkpt lat="-23.5880" lon="-46.6595">
+        <ele>749.0</ele>
+        <time>2024-05-07T08:18:00Z</time>
+      </trkpt>
+      <trkpt lat="-23.5885" lon="-46.6590">
+        <ele>748.5</ele>
+        <time>2024-05-07T08:18:30Z</time>
+      </trkpt>
+      <trkpt lat="-23.5890" lon="-46.6585">
+        <ele>748.0</ele>
+        <time>2024-05-07T08:19:00Z</time>
+      </trkpt>
+      <trkpt lat="-23.5890" lon="-46.6565">
+        <ele>745.0</ele>
+        <time>2024-05-07T08:20:00Z</time>
+      </trkpt>
+    </trkseg>
+  </trk>
+</gpx>
