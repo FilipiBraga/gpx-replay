@@ -4,6 +4,7 @@ import Sidebar from './components/Sidebar'
 import MapContainer from './components/MapContainer'
 import { parseGPX } from './utils/gpxParser'
 import { calculateDistance, formatTime } from './utils/calculations'
+import MapOverlayCharts from './components/MapOverlayCharts'
 import './App.css'
 
 function App() {
@@ -24,6 +25,7 @@ function App() {
     totalDistance: 0,
     currentSpeed: 0,
     elevation: 0,
+    slope: 0,
     progress: 0,
     currentTime: 0,
     totalTime: 0
@@ -33,6 +35,7 @@ function App() {
     totalDistance: 0,
     currentSpeed: 0,
     elevation: 0,
+    slope: 0,
     progress: 0,
     currentTime: 0,
     totalTime: 0
@@ -42,6 +45,7 @@ function App() {
   const animationRef = useRef(null)
   const lastTimeRef = useRef(0)
   const currentIndexRef = useRef(0)
+  const lastUiUpdateRef = useRef(0)
 
   useEffect(() => {
     currentIndexRef.current = currentIndex
@@ -129,64 +133,80 @@ function App() {
     currentIndexRef.current = newIndex // Sincroniza o ref imediatamente para o próximo frame
 
     if (newIndex >= gpxData.points.length - 1) {
-      newIndex = gpxData.points.length - 1
       setIsPlaying(false)
-      setCurrentIndex(newIndex)
+      setCurrentIndex(gpxData.points.length - 1)
       lastTimeRef.current = 0
       return
     }
 
-    setCurrentIndex(newIndex)
-    updateStatsAndMarker(newIndex)
+    // Throttle: Atualiza o estado do React (estatísticas e gráficos) apenas a cada ~32ms (aprox 30fps)
+    const now = performance.now()
+    const shouldUpdateUI = now - lastUiUpdateRef.current > 32
+
+    // O marcador atualiza a 60fps, mas a câmera só segue a ~30fps (shouldUpdateUI)
+    updateMapPositionOnly(newIndex, shouldUpdateUI)
+
+    if (shouldUpdateUI) {
+      setCurrentIndex(newIndex)
+      updateStatsOnly(newIndex)
+      lastUiUpdateRef.current = now
+    }
+
     animationRef.current = requestAnimationFrame(animate)
   }
 
-  const updateStatsAndMarker = (index) => {
-    const indexFloor = Math.floor(index)
-    const nextIndex = Math.min(indexFloor + 1, gpxData.points.length - 1)
-    const progress = index - indexFloor
+  // Função focada apenas em mover os objetos no mapa (imperativo/rápido)
+  const updateMapPositionOnly = (index) => {
+    const indexFloor = Math.floor(index);
+    const nextIndex = Math.min(indexFloor + 1, gpxData.points.length - 1);
+    const progress = index - indexFloor;
 
-    const point = gpxData.points[indexFloor]
-    const nextPoint = gpxData.points[nextIndex]
+    const point = gpxData.points[indexFloor];
+    const nextPoint = gpxData.points[nextIndex];
 
-    const interpolatedLat = point.lat + (nextPoint.lat - point.lat) * progress
-    const interpolatedLon = point.lon + (nextPoint.lon - point.lon) * progress
-
+    const interpolatedLat = point.lat + (nextPoint.lat - point.lat) * progress;
+    const interpolatedLon = point.lon + (nextPoint.lon - point.lon) * progress;
     const elevValue = elevation.length > 0
       ? elevation[indexFloor] + (elevation[nextIndex] - elevation[indexFloor]) * progress
-      : 0
+      : 0;
 
-    // Determine previous elevation for slope calculation for the marker
-    let prevElevForMarker = elevValue // Default to current elevation for the very first point
+    let prevElevForMarker = elevValue;
     if (indexFloor > 0) {
-      prevElevForMarker = elevation[indexFloor - 1]
+      prevElevForMarker = elevation[indexFloor - 1];
     } else if (indexFloor === 0 && progress > 0) {
-      prevElevForMarker = elevation[0]
+      prevElevForMarker = elevation[0];
     }
+
+    const eleDiff = (nextPoint.ele || 0) - (point.ele || 0);
 
     if (mapRef.current) {
-      mapRef.current.createMarker({ lat: interpolatedLat, lon: interpolatedLon, ele: elevValue, prevEle: prevElevForMarker }, eleMinMax)
-      // Seguir a câmera no marcador durante animação
+      mapRef.current.createMarker({ lat: interpolatedLat, lon: interpolatedLon, ele: elevValue, prevEle: prevElevForMarker }, eleMinMax);
+      // Câmera agora segue a cada frame para suavidade total
       if (isPlaying && !isPaused) {
-        mapRef.current.followMarker({ lat: interpolatedLat, lon: interpolatedLon, ele: elevValue })
+        mapRef.current.followMarker({ lat: interpolatedLat, lon: interpolatedLon, ele: elevValue }, eleDiff);
       }
     }
+  }
 
-    // Otimização: usa distâncias pré-calculadas
-    const totalDist = stats.totalDistance
+  // Função focada apenas em atualizar os dados da Sidebar/Gráficos (declarativo/React)
+  const updateStatsOnly = (index) => {
+    const indexFloor = Math.floor(index);
+    const point = gpxData.points[indexFloor];
+    const nextPoint = gpxData.points[Math.min(indexFloor + 1, gpxData.points.length - 1)];
+
+    const totalDist = stats.totalDistance;
     let currentDist = gpxData.cumulativeDistances[indexFloor] || 0
-    currentDist += calculateDistance(
-      point.lat, point.lon,
-      interpolatedLat, interpolatedLon
-    )
 
     const percent = totalDist > 0 ? (currentDist / totalDist) * 100 : 0
-    const currentTime = (index / gpxData.points.length) * stats.totalTime
+    const currentTime = (index / (gpxData.points.length - 1)) * stats.totalTime
 
-    // Calcula a velocidade instantânea do segmento
     const segmentDist = calculateDistance(point.lat, point.lon, nextPoint.lat, nextPoint.lon)
     const timePerIndex = gpxData.points.length > 1 ? stats.totalTime / (gpxData.points.length - 1) : 0
     const instantSpeed = timePerIndex > 0 ? (segmentDist / (timePerIndex / 3600)) : 0
+
+    // Calcula a inclinação em percentual (%)
+    // (Elevação / Distância em metros) * 100
+    const currentSlope = segmentDist > 0 ? (((nextPoint.ele || 0) - (point.ele || 0)) / (segmentDist * 1000)) * 100 : 0
 
     // Aplica suavização (Low-pass filter) para evitar picos de velocidade por ruído de GPS
     // Usamos 10% da velocidade nova e 90% da anterior para uma transição fluida
@@ -200,7 +220,8 @@ function App() {
       distance: currentDist,
       totalDistance: totalDist,
       progress: percent,
-      elevation: elevValue,
+      elevation: elevation[indexFloor] || 0,
+      slope: currentSlope,
       currentTime: currentTime,
       currentSpeed: smoothedSpeed
     }))
@@ -222,6 +243,7 @@ function App() {
       setIsPlaying(true)
       setIsPaused(false)
       lastTimeRef.current = 0
+      mapRef.current?.setAutoFollow(true)
     }
   }
 
@@ -232,6 +254,7 @@ function App() {
   const handleResume = () => {
     setIsPaused(false)
     lastTimeRef.current = 0
+    mapRef.current?.setAutoFollow(true)
   }
 
   const handleReset = () => {
@@ -241,7 +264,6 @@ function App() {
     setIsPaused(false)
     lastTimeRef.current = 0
     if (gpxData && mapRef.current) {
-      // For the first point, prevEle can be the same as current ele (slope 0)
       mapRef.current.createMarker({ ...gpxData.points[0], prevEle: gpxData.points[0].ele }, eleMinMax)
     }
     setStats(prev => ({
@@ -254,11 +276,37 @@ function App() {
   }
 
   const handleProgressClick = (percent) => {
-    if (!gpxData) return
-    const newIndex = (percent / 100) * (gpxData.points.length - 1)
-    setCurrentIndex(newIndex)
-    updateStatsAndMarker(newIndex)
+    if (!gpxData) return;
+    const newIndex = (percent / 100) * (gpxData.points.length - 1);
+    setCurrentIndex(newIndex);
+    updateMapPositionOnly(newIndex);
+    updateStatsOnly(newIndex);
   }
+
+  const handleRecenter = () => {
+    if (!gpxData || !mapRef.current) return;
+    
+    // Reativa o acompanhamento automático
+    mapRef.current.setAutoFollow(true);
+    
+    // Força a centralização imediata no ponto atual
+    const indexFloor = Math.floor(currentIndex);
+    const nextIndex = Math.min(indexFloor + 1, gpxData.points.length - 1);
+    const progress = currentIndex - indexFloor;
+    const point = gpxData.points[indexFloor];
+    const nextPoint = gpxData.points[nextIndex];
+
+    const interpolatedLat = point.lat + (nextPoint.lat - point.lat) * progress;
+    const interpolatedLon = point.lon + (nextPoint.lon - point.lon) * progress;
+    const elevValue = elevation[indexFloor] + (elevation[nextIndex] - elevation[indexFloor]) * progress;
+
+    // Calcula a inclinação para manter a câmera no ângulo correto ao recentralizar
+    const currentSlope = nextPoint.ele - point.ele;
+
+    mapRef.current.followMarker({ lat: interpolatedLat, lon: interpolatedLon, ele: elevValue }, currentSlope);
+    updateMapPositionOnly(currentIndex);
+    updateStatsOnly(currentIndex);
+  };
 
   const handleLayerToggle = (layerId, visible) => {
     if (mapRef.current) {
@@ -300,12 +348,16 @@ function App() {
 
           // Atualizar stats
           let totalDist = 0
+          const cumulativeDistances = [0]
           for (let i = 1; i < drawnRoute.length; i++) {
-            totalDist += calculateDistance(
+            const d = calculateDistance(
               drawnRoute[i-1].lat, drawnRoute[i-1].lon,
               drawnRoute[i].lat, drawnRoute[i].lon
             )
+            totalDist += d
+            cumulativeDistances.push(totalDist)
           }
+          drawnRoute.cumulativeDistances = cumulativeDistances
           const totalTime = (totalDist / 25) * 3600
           setStats(prev => ({
             ...prev,
@@ -355,7 +407,8 @@ function App() {
     setIsPlaying(false)
     setCurrentIndex(index)
     currentIndexRef.current = index
-    updateStatsAndMarker(index)
+    updateMapPositionOnly(index)
+    updateStatsOnly(index)
   }
 
   return (
@@ -377,17 +430,33 @@ function App() {
           error={error}
           stats={stats}
           onLayerToggle={handleLayerToggle}
+          onRecenter={handleRecenter}
           onBuildRoute={handleBuildRoute}
           onClearRoute={handleClearRoute}
           elevation={elevation}
           route={route}
           onClearGPX={handleClearGPXData}
         />
-        {gpxData && <button className="clear-gpx-button" onClick={handleClearGPXData}>X Limpar GPX</button>}
-        <MapContainer 
-          ref={mapRef} 
-          onMarkerDrag={handleMarkerDrag}
-        />
+        <div className="main-content" style={{ position: 'relative', display: 'flex', flex: 1 }}>
+          {(gpxData || route) && (
+            <>
+              <button className="clear-gpx-button" onClick={handleClearGPXData}>X Limpar GPX</button>
+              <MapOverlayCharts 
+                elevationData={elevation}
+                currentIndex={currentIndex}
+                pointsCount={gpxData?.points?.length || route?.points?.length}
+                cumulativeDistances={gpxData?.cumulativeDistances || route?.points?.cumulativeDistances}
+                totalDistance={stats.totalDistance}
+                currentDistance={stats.distance}
+                onProgressChange={handleProgressClick}
+              />
+            </>
+          )}
+          <MapContainer 
+            ref={mapRef} 
+            onMarkerDrag={handleMarkerDrag}
+          />
+        </div>
       </div>
     </div>
   )

@@ -1,42 +1,56 @@
-import React, { useRef, useEffect, useImperativeHandle, forwardRef } from 'react';
-import L from 'leaflet';
+import React, { useRef, useEffect, useImperativeHandle, forwardRef, useState } from 'react';
+import maplibregl from 'maplibre-gl';
 import axios from 'axios';
-import 'leaflet/dist/leaflet.css';
-
-// Fix para ícones de marcador padrão - o caminho do ícone padrão do Leaflet pode ser problemático com bundlers
-delete L.Icon.Default.prototype._getIconUrl;
-L.Icon.Default.mergeOptions({
-  iconRetinaUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon-2x.png',
-  iconUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon.png',
-  shadowUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-shadow.png',
-});
+import 'maplibre-gl/dist/maplibre-gl.css';
 
 const MapContainer = forwardRef((props, ref) => {
-  const mapInstanceRef = useRef(null); // Ref para armazenar o objeto do mapa Leaflet
+  const mapInstanceRef = useRef(null);
   const markerRef = useRef(null); // Ref para armazenar o marcador de animação atual
-  const routeLayerRef = useRef(null); // Ref para armazenar a polilinha da rota atual
   const startMarkerRef = useRef(null);
   const endMarkerRef = useRef(null);
-  const extraLayersRef = useRef({}); // Armazena as camadas extras (ciclovias, etc)
   const routePointsRef = useRef([]); // Armazena os pontos da rota para busca de proximidade no arrasto
+  const drawnPointsRef = useRef([]); // Armazena pontos do desenho manual
+  const isAutoFollowEnabled = useRef(true); // Controla se a câmera deve seguir o marcador
+  const [mapStyle, setMapStyle] = useState('street');
+
+  // Atualiza a camada visual do desenho manual
+  const updateDrawingLayer = () => {
+    const map = mapInstanceRef.current;
+    if (!map) return;
+
+    const geojson = {
+      type: 'Feature',
+      geometry: {
+        type: 'LineString',
+        coordinates: drawnPointsRef.current.map(p => [p.lon, p.lat])
+      }
+    };
+
+    if (map.getSource('draw-source')) {
+      map.getSource('draw-source').setData(geojson);
+    } else {
+      map.addSource('draw-source', { type: 'geojson', data: geojson });
+      map.addLayer({
+        id: 'draw-layer',
+        type: 'line',
+        source: 'draw-source',
+        paint: {
+          'line-color': '#FFA500',
+          'line-width': 4,
+          'line-dasharray': [2, 1]
+        }
+      });
+    }
+  };
+
+  const handleMapClick = (e) => {
+    const newPoint = { lat: e.lngLat.lat, lon: e.lngLat.lng, ele: 0 };
+    drawnPointsRef.current = [...drawnPointsRef.current, newPoint];
+    updateDrawingLayer();
+  };
 
   // Sensibilidade: metros de diferença entre pontos para atingir cor máxima (ajustado para GPX real)
   const MAX_SLOPE_FOR_COLOR = 0.3; 
-
-  // Definição dos ícones de bandeira
-  const startIcon = L.divIcon({
-    html: '<span style="font-size: 24px;">🚩</span>',
-    className: 'custom-div-icon',
-    iconSize: [30, 30],
-    iconAnchor: [5, 25]
-  });
-
-  const endIcon = L.divIcon({
-    html: '<span style="font-size: 24px;">🏁</span>',
-    className: 'custom-div-icon',
-    iconSize: [30, 30],
-    iconAnchor: [5, 25]
-  });
 
   // Função auxiliar para encontrar o índice do ponto mais próximo da rota ao arrastar
   const findClosestIndex = (latlng) => {
@@ -45,7 +59,8 @@ const MapContainer = forwardRef((props, ref) => {
     let index = 0;
     for (let i = 0; i < routePointsRef.current.length; i++) {
       const p = routePointsRef.current[i];
-      const d = latlng.distanceTo([p.lat, p.lon]);
+      // Distância simples Euclidiana para performance (MapLibre usa [lon, lat])
+      const d = Math.sqrt(Math.pow(latlng.lng - p.lon, 2) + Math.pow(latlng.lat - p.lat, 2));
       if (d < minDistance) {
         minDistance = d;
         index = i;
@@ -55,326 +70,319 @@ const MapContainer = forwardRef((props, ref) => {
   };
 
   useEffect(() => {
-    // Inicializa o mapa apenas uma vez
     if (!mapInstanceRef.current) {
-      const map = L.map('map').setView([0, 0], 2); // Visualização inicial padrão, será atualizada pela geolocalização
-
-      const osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+      const map = new maplibregl.Map({
+        container: 'map',
+        style: 'https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json', // Estilo limpo
+        center: [-46.6333, -23.5505],
+        zoom: 12,
+        pitch: 45, // Inclinação para visão 3D
+        bearing: -17.6,
+        antialias: true
       });
 
-      const satellite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-        attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community'
-      });
-
-      // Camada de Relevo (Hillshade) para dar sensação de profundidade 3D nas montanhas
-      const hillshade = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Elevation/World_Hillshade/MapServer/tile/{z}/{y}/{x}', {
-        attribution: 'Esri, USGS, NOAA',
-        maxZoom: 15,
-        opacity: 0.5
-      });
-
-      // Camada de Prédios 3D (Simulação por tiles)
-      const buildings = L.tileLayer('https://{s}.tile.osmbuildings.org/0.2/anonymous/{z}/{x}/{y}.json', {
-        attribution: '&copy; <a href="https://osmbuildings.org">OSM Buildings</a>'
-      });
-
-      // Adiciona o mapa de ruas por padrão
-      osm.addTo(map);
-
-      const baseMaps = {
-        "Mapa 2D": osm,
-        "Satélite": satellite,
+      // Detectar interação do usuário para desativar o auto-follow
+      const stopFollow = (e) => {
+        if (e.originalEvent) isAutoFollowEnabled.current = false;
       };
+      map.on('movestart', stopFollow);
 
-      const overlayMaps = {
-        "Relevo 3D (Sombras)": hillshade,
-        "Construções 3D": buildings
-      };
+      map.on('load', () => {
+        // Adicionar fonte de terreno para relevo 3D real
+        map.addSource('terrainRGB', {
+          type: 'raster-dem',
+          url: 'https://demotiles.maplibre.org/terrain-tiles/tile.json',
+          tileSize: 256
+        });
+        
+        // Exageração de 3.0 é o ponto ideal para ver ladeiras urbanas sem deformar o mapa
+        map.setTerrain({ source: 'terrainRGB', exaggeration: 3.0 }); 
 
-      // Adiciona o controle de camadas no canto superior direito
-      L.control.layers(baseMaps, overlayMaps, { position: 'topright' }).addTo(map);
+        // Adicionamos a camada de Hillshade (sombreamento)
+        // É isso que cria as sombras nas encostas, permitindo ver o "volume" das subidas
+        map.addLayer({
+          id: 'hills',
+          type: 'hillshade',
+          source: 'terrainRGB',
+          paint: {
+            'hillshade-shadow-color': '#473b31',
+            'hillshade-exaggeration': 1.0
+          }
+        }, 'route'); // Renderiza abaixo da linha da rota
+
+        // Atmosfera 3D correta para MapLibre
+        map.setAtmosphere({
+          'color': 'white',
+          'high-color': '#add8e6',
+          'horizon-blend': 0.05
+        });
+
+        // Adicionar fonte de Satélite (ESRI) para uso posterior
+        map.addSource('satellite-source', {
+          type: 'raster',
+          tiles: ['https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'],
+          tileSize: 256,
+          attribution: 'Tiles &copy; Esri'
+        });
+      });
+
+      map.addControl(new maplibregl.NavigationControl(), 'top-right');
+      map.addControl(new maplibregl.TerrainControl({ source: 'terrainRGB' }), 'top-right');
 
       mapInstanceRef.current = map;
 
-      // 1. Posicionar o mapa onde o usuário está
       if (navigator.geolocation) {
         navigator.geolocation.getCurrentPosition(
           (position) => {
             const { latitude, longitude } = position.coords;
-            map.setView([latitude, longitude], 13); // Define a visualização para a localização do usuário com um zoom razoável
-          },
-          (error) => {
-            console.error("Erro ao obter a localização do usuário:", error);
-            // Fallback para uma visualização padrão se a geolocalização falhar ou for negada
-            map.setView([-23.5505, -46.6333], 10); // Padrão para São Paulo, Brasil
+            map.jumpTo({ center: [longitude, latitude], zoom: 13 });
           }
         );
-      } else {
-        console.warn("Geolocalização não é suportada por este navegador.");
-        map.setView([-23.5505, -46.6333], 10); // Padrão para São Paulo, Brasil
       }
     }
 
-    // Função de limpeza para quando o componente for desmontado
     return () => {
       if (mapInstanceRef.current) {
         mapInstanceRef.current.remove();
         mapInstanceRef.current = null;
       }
     };
-  }, []); // Array de dependências vazio garante que isso seja executado apenas uma vez na montagem
+  }, []);
+
+  // Função interna para alternar o estilo
+  const handleInternalStyleToggle = (style) => {
+    setMapStyle(style);
+    const map = mapInstanceRef.current;
+    if (!map) return;
+
+    const visible = style === 'satellite';
+    
+    if (visible) {
+      if (!map.getSource('satellite-source')) {
+        map.addSource('satellite-source', {
+          type: 'raster',
+          tiles: ['https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'],
+          tileSize: 256,
+          attribution: 'Tiles &copy; Esri'
+        });
+      }
+      if (!map.getLayer('satellite-layer')) {
+        map.addLayer({ id: 'satellite-layer', type: 'raster', source: 'satellite-source' });
+      }
+      map.setLayoutProperty('satellite-layer', 'visibility', 'visible');
+      if (map.getLayer('route')) map.moveLayer('route');
+      if (map.getLayer('draw-layer')) map.moveLayer('draw-layer');
+    } else if (map.getLayer('satellite-layer')) {
+      map.setLayoutProperty('satellite-layer', 'visibility', 'none');
+    }
+  };
 
   // Expõe métodos para o componente pai via ref
   useImperativeHandle(ref, () => ({
     drawRoute: (points, fitBounds = true) => {
-      if (!mapInstanceRef.current) return;
+      const map = mapInstanceRef.current;
+      if (!map || points.length < 2) return;
+      isAutoFollowEnabled.current = true; // Resetar follow ao carregar nova rota
 
-      if (routeLayerRef.current) {
-        mapInstanceRef.current.removeLayer(routeLayerRef.current);
-        routeLayerRef.current = null;
-      }
       routePointsRef.current = points;
-
-      if (markerRef.current) {
-        mapInstanceRef.current.removeLayer(markerRef.current);
-        markerRef.current = null;
-      }
-      if (startMarkerRef.current) {
-        mapInstanceRef.current.removeLayer(startMarkerRef.current);
-        startMarkerRef.current = null;
-      }
-      if (endMarkerRef.current) {
-        mapInstanceRef.current.removeLayer(endMarkerRef.current);
-        endMarkerRef.current = null;
-      }
-
-      if (points.length < 2) return;
-
-      const latlngs = points.map(p => [p.lat, p.lon]);
-      const routeSegments = [];
-
+      
+      // Criar segmentos coloridos com base na inclinação
+      const features = [];
       for (let i = 0; i < points.length - 1; i++) {
         const p1 = points[i];
         const p2 = points[i + 1];
-        const segmentSlope = (p2.ele || 0) - (p1.ele || 0);
+        const elevationDiff = (p2.ele || 0) - (p1.ele || 0);
+        
+        let color = '#FC5200'; // Plano (Laranja Strava)
+        if (elevationDiff > 0.1) color = '#FF0000'; // Subida (Vermelho)
+        if (elevationDiff < -0.1) color = '#00FF00'; // Descida (Verde)
 
-        // Mapeamento linear para evitar saltos bruscos (Verde=120, Vermelho=0, Azul=240)
-        const slopeNorm = Math.max(-1, Math.min(1, segmentSlope / MAX_SLOPE_FOR_COLOR));
-        const hue = 120 - (slopeNorm * 120);
-
-        const segmentColor = `hsl(${hue}, 100%, 50%)`;
-
-        routeSegments.push(
-          L.polyline([[p1.lat, p1.lon], [p2.lat, p2.lon]], { color: segmentColor, weight: 6 })
-        );
+        features.push({
+          type: 'Feature',
+          geometry: {
+            type: 'LineString',
+            coordinates: [[p1.lon, p1.lat], [p2.lon, p2.lat]]
+          },
+          properties: { color }
+        });
       }
 
-      // Add all segments to a feature group and then to the map
-      routeLayerRef.current = L.featureGroup(routeSegments).addTo(mapInstanceRef.current);
-
-      // Adicionar bandeiras de início e fim
-      if (latlngs.length > 0 && points.length > 0) { // Ensure points array is not empty
-        startMarkerRef.current = L.marker(latlngs[0], { icon: startIcon }).addTo(mapInstanceRef.current);
-        endMarkerRef.current = L.marker(latlngs[latlngs.length - 1], { icon: endIcon }).addTo(mapInstanceRef.current);
+      // Limpar camada anterior se existir
+      if (map.getLayer('route')) {
+        map.removeLayer('route');
+        map.removeSource('route');
       }
 
-      if (fitBounds && latlngs.length > 0) {
-        mapInstanceRef.current.fitBounds(routeLayerRef.current.getBounds());
+      map.addSource('route', {
+        type: 'geojson',
+        data: {
+          type: 'FeatureCollection',
+          features: features
+        }
+      });
+
+      map.addLayer({
+        id: 'route',
+        type: 'line',
+        source: 'route',
+        layout: { 'line-join': 'round', 'line-cap': 'round' },
+        paint: {
+          'line-color': ['get', 'color'],
+          'line-width': 5,
+          'line-opacity': 0.8
+        }
+      });
+
+      // Bandeiras (Usando marcadores HTML simples no MapLibre)
+      if (startMarkerRef.current) startMarkerRef.current.remove();
+      if (endMarkerRef.current) endMarkerRef.current.remove();
+
+      const startCoord = [points[0].lon, points[0].lat];
+      const endCoord = [points[points.length - 1].lon, points[points.length - 1].lat];
+
+      const startEl = document.createElement('div');
+      startEl.innerHTML = '<div style="font-size: 30px; filter: drop-shadow(0 2px 2px rgba(0,0,0,0.3))">🚩</div>';
+      startEl.style.fontSize = '24px';
+      startMarkerRef.current = new maplibregl.Marker({ element: startEl })
+        .setLngLat(startCoord)
+        .addTo(map);
+
+      const endEl = document.createElement('div');
+      endEl.innerHTML = '<div style="font-size: 30px; filter: drop-shadow(0 2px 2px rgba(0,0,0,0.3))">🏁</div>';
+      endEl.style.fontSize = '24px';
+      endMarkerRef.current = new maplibregl.Marker({ element: endEl })
+        .setLngLat(endCoord)
+        .addTo(map);
+
+      if (fitBounds) {
+        const coordinates = points.map(p => [p.lon, p.lat]);
+        const bounds = coordinates.reduce((acc, coord) => acc.extend(coord), new maplibregl.LngLatBounds(coordinates[0], coordinates[0]));
+        map.fitBounds(bounds, { padding: 50 });
       }
     },
-    createMarker: (point, eleMinMax) => { // point now includes prevEle
-      if (!mapInstanceRef.current) return;
+    createMarker: (point, eleMinMax) => {
+      const map = mapInstanceRef.current;
+      if (!map) return;
 
-      // Cálculo da cor baseada na elevação
-      let hue;
-      let lightness = 50; // Default lightness
-
-      // Fallback para evitar NaN se prevEle for undefined
       const currentEle = point.ele || 0;
       const prevEle = point.prevEle !== undefined ? point.prevEle : currentEle;
       const slope = currentEle - prevEle;
-
-      // Cálculo gradual do matiz baseado na intensidade da inclinação
       const slopeNorm = Math.max(-1, Math.min(1, slope / MAX_SLOPE_FOR_COLOR));
-      hue = 120 - (slopeNorm * 120);
+      const hue = 120 - (slopeNorm * 120);
+      const color = `hsl(${hue}, 100%, 50%)`;
 
-      if (eleMinMax && eleMinMax.max !== eleMinMax.min) {
-        const eleRatio = (currentEle - eleMinMax.min) / (eleMinMax.max - eleMinMax.min);
-        const ascentL = 60 - (eleRatio * 35);  // Alvo para subida
-        const descentL = 40 + (eleRatio * 35); // Alvo para descida
-
-        // Interpola a luminosidade suavemente a partir de 50% (neutro)
-        if (slopeNorm > 0) {
-          lightness = 50 + (ascentL - 50) * slopeNorm;
-        } else if (slopeNorm < 0) {
-          lightness = 50 + (descentL - 50) * Math.abs(slopeNorm);
-        }
-      }
-
-      // Ensure hue is within 0-360 and lightness within 0-100
-      hue = Math.max(0, Math.min(360, hue));
-      lightness = Math.max(0, Math.min(100, lightness));
-
-      const color = `hsl(${hue}, 100%, ${lightness}%)`;
-      
       if (markerRef.current) {
-        markerRef.current.setLatLng([point.lat, point.lon]);
-        
-        // Otimização: Em vez de setIcon (pesado), alteramos apenas o CSS da div interna
-        const el = markerRef.current.getElement();
-        if (el) {
-          const dot = el.querySelector('.marker-dot');
-          if (dot) dot.style.backgroundColor = color;
-        }
+        markerRef.current.setLngLat([point.lon, point.lat]);
+        const el = markerRef.current.getElement().querySelector('.marker-dot');
+        if (el) el.style.backgroundColor = color;
       } else {
-        const icon = L.divIcon({
-          html: `<div class="marker-dot" style="background-color: ${color}; width: 20px; height: 20px; border-radius: 50%; border: 2px solid #000; box-shadow: 0 0 4px rgba(0,0,0,0.5);"></div>`,
-          className: 'marker-bolinha',
-          iconSize: [20, 20],
-          iconAnchor: [10, 10]
-        });
+        const el = document.createElement('div');
+        el.className = 'marker-bolinha';
+        el.innerHTML = `<div class="marker-dot" style="background-color: ${color}; width: 20px; height: 20px; border-radius: 50%; border: 2px solid #000; box-shadow: 0 0 4px rgba(0,0,0,0.5);"></div>`;
 
-        markerRef.current = L.marker([point.lat, point.lon], {
-          icon: icon,
-          draggable: true,
-          zIndexOffset: 1000
-        }).addTo(mapInstanceRef.current);
+        markerRef.current = new maplibregl.Marker({ element: el, draggable: true })
+          .setLngLat([point.lon, point.lat])
+          .addTo(map);
 
-        // Evento de arrasto: encontra o ponto mais próximo e avisa o App.jsx
         markerRef.current.on('drag', (e) => {
-          const snappedIndex = findClosestIndex(e.target.getLatLng());
+          const snappedIndex = findClosestIndex(markerRef.current.getLngLat());
           if (props.onMarkerDrag) props.onMarkerDrag(snappedIndex);
         });
       }
     },
-    // 2. Acompanhar a bolinha no mapa
-    followMarker: (point) => {
-      if (mapInstanceRef.current) {
-        // Usa setView com animate: false para evitar atrasos e conflitos na câmera
-        mapInstanceRef.current.setView([point.lat, point.lon], mapInstanceRef.current.getZoom(), { animate: false });
+    followMarker: (point, slope = 0) => {
+      const map = mapInstanceRef.current;
+      if (map && isAutoFollowEnabled.current) {
+        // Limitamos o pitch máximo para 75 graus para evitar jitter de horizonte no terreno 3D
+        const dynamicPitch = Math.min(75, 60 + (Math.max(-1, Math.min(1, slope / 0.2)) * 15));
+        
+        // Usamos jumpTo para atualizações de frame instantâneas sem overhead de animação
+        map.jumpTo({
+          center: [point.lon, point.lat],
+          pitch: dynamicPitch
+        });
       }
     },
+    setAutoFollow: (enabled) => {
+      isAutoFollowEnabled.current = enabled;
+    },
     toggleLayer: async (layerId, visible) => {
-      if (!mapInstanceRef.current) return;
+      const map = mapInstanceRef.current;
+      if (!map) return;
 
-      // Se for para esconder a camada
+      // Lógica específica para a camada de Satélite
+      if (layerId === 'satellite') {
+        handleInternalStyleToggle(visible ? 'satellite' : 'street');
+        return;
+      }
+
       if (!visible) {
-        if (extraLayersRef.current[layerId]) {
-          mapInstanceRef.current.removeLayer(extraLayersRef.current[layerId]);
-          delete extraLayersRef.current[layerId];
+        if (map.getLayer(layerId)) {
+          map.removeLayer(layerId);
+          map.removeSource(layerId);
         }
         return;
       }
 
-      // Verificação de zoom para não sobrecarregar a API
-      if (mapInstanceRef.current.getZoom() < 13) {
-        alert("Por favor, aumente o zoom para visualizar os detalhes desta camada.");
-        return;
-      }
-
-      // Definição de filtros OSM e estilos
-      let osmQuery = "";
-      let style = {};
-      let isPolygon = false;
-
-      switch (layerId) {
-        case 'cycleway':
-          osmQuery = 'way["highway"="cycleway"];way["cycleway"="track"]';
-          style = { color: '#0033ff', weight: 5, opacity: 0.9 };
-          break;
-        case 'cycling':
-          osmQuery = 'way["cycleway"~"lane|share_busway"]';
-          style = { color: '#00ffff', weight: 4, opacity: 0.8, dashArray: '5, 10' };
-          break;
-        case 'highway':
-          osmQuery = 'way["highway"~"motorway|trunk|primary"]';
-          style = { color: '#ff4500', weight: 6, opacity: 0.7 };
-          break;
-        case 'parks':
-          osmQuery = 'way["leisure"="park"];way["landuse"="recreation_ground"]';
-          style = { color: '#228b22', fillColor: '#32cd32', fillOpacity: 0.3, weight: 1 };
-          isPolygon = true;
-          break;
-        default:
-          return;
-      }
-
-      try {
-        const bounds = mapInstanceRef.current.getBounds();
-        const bbox = `${bounds.getSouth()},${bounds.getWest()},${bounds.getNorth()},${bounds.getEast()}`;
-        
-        // Construção da Query Overpass
-        const overpassUrl = `https://overpass-api.de/api/interpreter?data=[out:json][timeout:25];(${osmQuery}(${bbox}););out body;>;out skel qt;`;
-        
-        const response = await axios.get(overpassUrl);
-        const data = response.data;
-
-        // Mapeamento de nós para coordenadas
-        const nodes = {};
-        data.elements.forEach(el => {
-          if (el.type === 'node') nodes[el.id] = [el.lat, el.lon];
-        });
-
-        const newLayerGroup = L.featureGroup();
-
-        // Processamento dos caminhos (ways)
-        data.elements.forEach(el => {
-          if (el.type === 'way' && el.nodes) {
-            const coords = el.nodes.map(id => nodes[id]).filter(c => !!c);
-            if (coords.length > 1) {
-              if (isPolygon) {
-                L.polygon(coords, style).addTo(newLayerGroup);
-              } else {
-                L.polyline(coords, style).addTo(newLayerGroup);
-              }
-            }
-          }
-        });
-
-        extraLayersRef.current[layerId] = newLayerGroup.addTo(mapInstanceRef.current);
-      } catch (error) {
-        console.error("Erro ao carregar dados do OpenStreetMap:", error);
-      }
+      // A lógica do Overpass permaneceria parecida, mas você usaria addSource com os dados GeoJSON retornados
+      console.warn("Camadas extras precisam ser implementadas via GeoJSON no MapLibre.");
     },
     startDrawing: () => {
-      // Placeholder para a lógica de desenho (por exemplo, usando leaflet-draw)
-      console.log("Iniciar desenho");
+      const map = mapInstanceRef.current;
+      if (!map) return;
+      map.getCanvas().style.cursor = 'crosshair';
+      map.on('click', handleMapClick);
     },
     stopDrawing: () => {
-      // Placeholder para a lógica de desenho
-      console.log("Parar desenho");
+      const map = mapInstanceRef.current;
+      if (!map) return;
+      map.getCanvas().style.cursor = '';
+      map.off('click', handleMapClick);
     },
     getDrawnRoute: () => {
-      // Placeholder para a lógica de desenho
-      return [];
-    },
-    clearMap: () => {
-      if (routeLayerRef.current) {
-        mapInstanceRef.current.removeLayer(routeLayerRef.current);
-        routeLayerRef.current = null;
-      }
-      if (markerRef.current) {
-        mapInstanceRef.current.removeLayer(markerRef.current);
-        markerRef.current = null;
-      }
-      if (startMarkerRef.current) {
-        mapInstanceRef.current.removeLayer(startMarkerRef.current);
-        startMarkerRef.current = null;
-      }
-      if (endMarkerRef.current) {
-        mapInstanceRef.current.removeLayer(endMarkerRef.current);
-        endMarkerRef.current = null;
-      }
-      routePointsRef.current = [];
+      return drawnPointsRef.current;
     },
     clearDrawing: () => {
-      // Placeholder para a lógica de desenho
-      console.log("Limpar desenho");
+      const map = mapInstanceRef.current;
+      drawnPointsRef.current = [];
+      if (map && map.getLayer('draw-layer')) {
+        map.removeLayer('draw-layer');
+        map.removeSource('draw-source');
+      }
+    },
+    clearMap: () => {
+      const map = mapInstanceRef.current;
+      if (!map) return;
+      if (map.getLayer('route')) { map.removeLayer('route'); map.removeSource('route'); }
+      if (map.getLayer('draw-layer')) { map.removeLayer('draw-layer'); map.removeSource('draw-source'); }
+      if (markerRef.current) markerRef.current.remove();
+      markerRef.current = null;
+      if (startMarkerRef.current) startMarkerRef.current.remove();
+      if (endMarkerRef.current) endMarkerRef.current.remove();
+      drawnPointsRef.current = [];
     }
   }));
 
-  return <div id="map" style={{ flexGrow: 1, height: '100vh', width: '100%' }}></div>;
+  return (
+    <div className="map-wrapper" style={{ position: 'relative', flexGrow: 1, height: '100vh', width: '100%' }}>
+      <div id="map" style={{ height: '100%', width: '100%' }}></div>
+      
+      <div className="map-style-control">
+        <button 
+          className={`style-btn ${mapStyle === 'street' ? 'active' : ''}`}
+          onClick={() => handleInternalStyleToggle('street')}
+        >
+          🗺️ Mapa
+        </button>
+        <button 
+          className={`style-btn ${mapStyle === 'satellite' ? 'active' : ''}`}
+          onClick={() => handleInternalStyleToggle('satellite')}
+        >
+          🛰️ Satélite
+        </button>
+      </div>
+    </div>
+  );
 });
 
 export default MapContainer;

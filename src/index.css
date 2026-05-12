@@ -150,22 +150,32 @@ header h1 {
 
 button {
   flex: 1;
-  padding: 10px;
-  border: none;
-  border-radius: 6px;
+  padding: 10px 14px;
+  border: 1.5px solid transparent;
+  border-radius: 8px;
   cursor: pointer;
-  font-weight: 600;
-  font-size: 14px;
-  transition: all 0.3s ease;
+  font-weight: 700;
+  font-size: 12px;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
+  gap: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
 button:disabled {
-  opacity: 0.5;
+  opacity: 0.4;
   cursor: not-allowed;
+}
+
+button:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+
+button:active:not(:disabled) {
+  transform: translateY(0);
 }
 
 .play-btn {
@@ -176,25 +186,28 @@ button:disabled {
 
 .play-btn:hover:not(:disabled) {
   background: #FF6B35;
-  box-shadow: 0 2px 8px rgba(252, 82, 0, 0.3);
+  box-shadow: 0 4px 12px rgba(252, 82, 0, 0.3);
 }
 
 .pause-btn {
-  background: #FFA500;
-  color: white;
+  background: #ffffff;
+  color: #FC5200;
+  border-color: #FC5200;
 }
 
 .pause-btn:hover:not(:disabled) {
-  background: #FFB520;
+  background: #fff5f0;
 }
 
 .reset-btn {
-  background: #e0e0e0;
-  color: #333;
+  background: #f3f3f3;
+  color: #555;
+  border-color: #e0e0e0;
 }
 
 .reset-btn:hover:not(:disabled) {
-  background: #d0d0d0;
+  background: #eeeeee;
+  border-color: #d0d0d0;
 }
 
 .speed-control {
@@ -489,4 +502,80 @@ button:disabled {
   .elevation-stats {
     grid-template-columns: 1fr 1fr 1fr 1fr;
   }
+}
+
+/* Map Overlay Charts */
+.map-overlay-charts {
+  position: absolute;
+  bottom: 30px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 70%;
+  min-width: 300px;
+  height: 100px;
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 12px;
+  z-index: 1000;
+  padding: 10px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+  pointer-events: auto;
+}
+
+.overlay-chart-labels {
+  display: flex;
+  gap: 15px;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  margin-bottom: 5px;
+  letter-spacing: 0.5px;
+}
+
+.map-overlay-charts svg {
+  width: 100%;
+  height: calc(100% - 15px);
+}
+
+/* Map Style Control Overlay */
+.map-style-control {
+  position: absolute;
+  top: 15px;
+  left: 15px;
+  z-index: 10;
+  display: flex;
+  gap: 5px;
+  background: rgba(255, 255, 255, 0.9);
+  padding: 4px;
+  border-radius: 8px;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.15);
+  backdrop-filter: blur(4px);
+}
+
+.style-btn {
+  padding: 6px 12px;
+  font-size: 12px;
+  background: transparent;
+  color: #333;
+}
+
+.style-btn.active {
+  background: #FC5200;
+  color: white;
+}
+
+/* Estilos para o marcador da bolinha */
+.marker-bolinha {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: auto;
+}
+
+.marker-dot {
+  transition: background-color 0.2s ease;
+  will-change: transform;
+  z-index: 1000;
 }

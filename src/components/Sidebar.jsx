@@ -1,4 +1,4 @@
-import { useRef } from 'react'
+import { useRef, useState } from 'react'
 import FileUpload from './FileUpload'
 import RouteInfo from './RouteInfo'
 import Controls from './Controls'
@@ -95,7 +95,10 @@ function Sidebar({
           <Stats
             speed={isPlaying ? stats.currentSpeed : 0}
             elevation={stats.elevation}
+            slope={stats.slope}
             progress={stats.progress}
+            currentDistance={stats.distance}
+            totalDistance={stats.totalDistance}
           />
         </>
       )}
