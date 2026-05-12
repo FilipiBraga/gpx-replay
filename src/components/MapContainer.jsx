@@ -360,6 +360,12 @@ const MapContainer = forwardRef((props, ref) => {
       if (startMarkerRef.current) startMarkerRef.current.remove();
       if (endMarkerRef.current) endMarkerRef.current.remove();
       drawnPointsRef.current = [];
+    },
+    setPitch: (newPitch) => {
+      const map = mapInstanceRef.current;
+      if (map) {
+        map.setPitch(newPitch);
+      }
     }
   }));
 

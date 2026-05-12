@@ -1,0 +1,296 @@
+/* Map Overlay Controls */
+.map-overlay-controls {
+  position: fixed;
+  width: 320px;
+  background: rgba(255, 255, 255, 0.80);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  border-radius: 12px;
+  z-index: 1001;
+  padding: 16px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+  pointer-events: auto;
+  user-select: none;
+  transition: box-shadow 0.2s ease;
+}
+
+.map-overlay-controls:active {
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.25);
+}
+
+/* Handle de Arraste */
+.overlay-drag-handle {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  height: 20px;
+  margin: -8px -16px 12px -16px;
+  padding: 8px 0;
+  cursor: grab;
+  background: linear-gradient(180deg, rgba(252, 82, 0, 0.05), transparent);
+  border-radius: 12px 12px 0 0;
+  user-select: none;
+  transition: background 0.2s ease;
+}
+
+.overlay-drag-handle:hover {
+  background: linear-gradient(180deg, rgba(252, 82, 0, 0.1), transparent);
+}
+
+.overlay-drag-handle:active {
+  cursor: grabbing;
+  background: linear-gradient(180deg, rgba(252, 82, 0, 0.15), transparent);
+}
+
+.drag-icon {
+  font-size: 12px;
+  color: #ccc;
+  font-weight: bold;
+  letter-spacing: 2px;
+  transition: color 0.2s ease;
+}
+
+.overlay-drag-handle:hover .drag-icon {
+  color: #FC5200;
+}
+
+/* Barra de Progresso */
+.overlay-progress-section {
+  margin-bottom: 16px;
+}
+
+.progress-label {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  color: #666;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.progress-track {
+  width: 100%;
+  height: 6px;
+  background: #ddd;
+  border-radius: 3px;
+  cursor: pointer;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #FC5200, #ff7a3d);
+  border-radius: 3px;
+  transition: width 0.1s linear;
+}
+
+/* Grid de Estatísticas */
+.overlay-stats-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.stat-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background: rgba(252, 82, 0, 0.05);
+  padding: 10px;
+  border-radius: 8px;
+  border: 1px solid rgba(252, 82, 0, 0.1);
+}
+
+.stat-label {
+  font-size: 10px;
+  color: #999;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 4px;
+}
+
+.stat-value {
+  font-size: 14px;
+  font-weight: 700;
+  color: #333;
+}
+
+/* Controles e Velocidade */
+.overlay-controls-section {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.controls-buttons {
+  display: flex;
+  gap: 6px;
+}
+
+.control-btn {
+  width: 36px;
+  height: 36px;
+  border: none;
+  border-radius: 6px;
+  background: rgba(252, 82, 0, 0.1);
+  color: #FC5200;
+  font-size: 16px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.control-btn:hover {
+  background: rgba(252, 82, 0, 0.2);
+  transform: scale(1.05);
+}
+
+.control-btn:active {
+  transform: scale(0.95);
+}
+
+.play-btn {
+  background: rgba(252, 82, 0, 0.15);
+}
+
+.play-btn:hover {
+  background: #FC5200;
+  color: white;
+}
+
+.pause-btn:hover {
+  background: #ffa500;
+  color: white;
+}
+
+.reset-btn:hover {
+  background: #666;
+  color: white;
+}
+
+/* Controle de Velocidade */
+.speed-control {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+}
+
+.speed-slider {
+  flex: 1;
+  height: 4px;
+  border-radius: 2px;
+  background: linear-gradient(90deg, #ddd, #FC5200);
+  outline: none;
+  -webkit-appearance: none;
+  appearance: none;
+  cursor: pointer;
+}
+
+.speed-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #FC5200;
+  cursor: pointer;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  transition: all 0.2s ease;
+}
+
+.speed-slider::-webkit-slider-thumb:hover {
+  transform: scale(1.2);
+}
+
+.speed-slider::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #FC5200;
+  cursor: pointer;
+  border: none;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  transition: all 0.2s ease;
+}
+
+.speed-slider::-moz-range-thumb:hover {
+  transform: scale(1.2);
+}
+
+.speed-value {
+  font-size: 12px;
+  font-weight: 700;
+  color: #FC5200;
+  min-width: 28px;
+  text-align: center;
+}
+
+/* Responsivo */
+@media (max-width: 768px) {
+  .map-overlay-controls {
+    width: 280px;
+    padding: 12px;
+    bottom: 10px;
+    right: 10px;
+  }
+
+  .overlay-stats-grid {
+    gap: 8px;
+  }
+
+  .stat-item {
+    padding: 8px;
+  }
+
+  .stat-label {
+    font-size: 9px;
+  }
+
+  .stat-value {
+    font-size: 12px;
+  }
+
+  .control-btn {
+    width: 32px;
+    height: 32px;
+    font-size: 14px;
+  }
+}
+
+@media (max-width: 480px) {
+  .map-overlay-controls {
+    width: 240px;
+    padding: 10px;
+  }
+
+  .overlay-stats-grid {
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+  }
+
+  .stat-item {
+    padding: 6px;
+  }
+
+  .overlay-controls-section {
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .controls-buttons {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .speed-control {
+    width: 100%;
+  }
+}

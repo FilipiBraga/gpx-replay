@@ -5,6 +5,8 @@ import MapContainer from './components/MapContainer'
 import { parseGPX } from './utils/gpxParser'
 import { calculateDistance, formatTime } from './utils/calculations'
 import MapOverlayCharts from './components/MapOverlayCharts'
+import MapOverlayControls from './components/MapOverlayControls'
+import PitchControl from './components/PitchControl'
 import './App.css'
 
 function App() {
@@ -41,6 +43,7 @@ function App() {
     totalTime: 0
   });
   const [isDrawing, setIsDrawing] = useState(false)
+  const [mapPitch, setMapPitch] = useState(45)
 
   const animationRef = useRef(null)
   const lastTimeRef = useRef(0)
@@ -308,80 +311,12 @@ function App() {
     updateStatsOnly(currentIndex);
   };
 
-  const handleLayerToggle = (layerId, visible) => {
+  const handlePitchChange = (newPitch) => {
+    setMapPitch(newPitch);
     if (mapRef.current) {
-      mapRef.current.toggleLayer(layerId, visible)
+      mapRef.current.setPitch(newPitch);
     }
-  }
-
-  const handleBuildRoute = (options) => {
-    try {
-      if (options.mode === 'draw') {
-        // Ativar modo de desenho
-        if (!isDrawing) {
-          setIsDrawing(true)
-          mapRef.current?.startDrawing()
-          setError('')
-        } else {
-          // Finalizar desenho
-          setIsDrawing(false)
-          mapRef.current?.stopDrawing()
-          
-          const drawnRoute = mapRef.current?.getDrawnRoute()
-          if (!drawnRoute || drawnRoute.length < 2) {
-            setError('Desenhe uma rota no mapa com pelo menos 2 pontos')
-            return
-          }
-
-          setRoute({ points: drawnRoute })
-          setElevation(drawnRoute.map(p => p.ele || 0))
-          
-          setEleMinMax({
-            min: Math.min(...drawnRoute.map(p => p.ele || 0)),
-            max: Math.max(...drawnRoute.map(p => p.ele || 0))
-          })
-
-          // Desenhar rota no mapa
-          if (mapRef.current) {
-            mapRef.current.drawRoute(drawnRoute, true)
-          }
-
-          // Atualizar stats
-          let totalDist = 0
-          const cumulativeDistances = [0]
-          for (let i = 1; i < drawnRoute.length; i++) {
-            const d = calculateDistance(
-              drawnRoute[i-1].lat, drawnRoute[i-1].lon,
-              drawnRoute[i].lat, drawnRoute[i].lon
-            )
-            totalDist += d
-            cumulativeDistances.push(totalDist)
-          }
-          drawnRoute.cumulativeDistances = cumulativeDistances
-          const totalTime = (totalDist / 25) * 3600
-          setStats(prev => ({
-            ...prev,
-            totalDistance: totalDist,
-            totalTime: totalTime,
-            progress: 0
-          }))
-
-          setError('')
-        }
-      }
-    } catch (err) {
-      setError('Erro ao construir rota: ' + err.message)
-      setIsDrawing(false)
-    }
-  }
-
-  const handleClearRoute = () => {
-    if (mapRef.current) {
-      mapRef.current.clearDrawing()
-    }
-    setRoute(null)
-    setElevation([])
-  }
+  };
 
   const handleClearGPXData = () => {
     setGpxData(null);
@@ -418,21 +353,7 @@ function App() {
         <Sidebar
           gpxData={gpxData}
           onGPXUpload={handleGPXUpload}
-          isPlaying={isPlaying}
-          isPaused={isPaused}
-          onPlay={handlePlay}
-          onPause={handlePause}
-          onResume={handleResume}
-          onReset={handleReset}
-          animationSpeed={animationSpeed}
-          onSpeedChange={setAnimationSpeed}
-          onProgressClick={handleProgressClick}
           error={error}
-          stats={stats}
-          onLayerToggle={handleLayerToggle}
-          onRecenter={handleRecenter}
-          onBuildRoute={handleBuildRoute}
-          onClearRoute={handleClearRoute}
           elevation={elevation}
           route={route}
           onClearGPX={handleClearGPXData}
@@ -449,6 +370,24 @@ function App() {
                 totalDistance={stats.totalDistance}
                 currentDistance={stats.distance}
                 onProgressChange={handleProgressClick}
+              />
+              <MapOverlayControls
+                isPlaying={isPlaying}
+                isPaused={isPaused}
+                onPlay={handlePlay}
+                onPause={handlePause}
+                onResume={handleResume}
+                onReset={handleReset}
+                animationSpeed={animationSpeed}
+                onSpeedChange={setAnimationSpeed}
+                stats={stats}
+                onProgressClick={handleProgressClick}
+                totalTime={stats.totalTime}
+                currentTime={stats.currentTime}
+              />
+              <PitchControl 
+                pitch={mapPitch} 
+                onPitchChange={handlePitchChange}
               />
             </>
           )}
