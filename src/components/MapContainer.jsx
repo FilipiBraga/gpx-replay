@@ -2,6 +2,7 @@ import React, { useRef, useEffect, useImperativeHandle, forwardRef, useState } f
 import maplibregl from 'maplibre-gl';
 import axios from 'axios';
 import 'maplibre-gl/dist/maplibre-gl.css';
+import ResizableDraggableContainer from './ResizableDraggableContainer';
 
 const MapContainer = forwardRef((props, ref) => {
   const mapInstanceRef = useRef(null);
@@ -369,6 +370,16 @@ const MapContainer = forwardRef((props, ref) => {
     }
   }));
 
+  const viewportHeight = typeof window !== 'undefined' ? window.innerHeight : 900;
+  const controlWidth = 280;
+  const controlHeight = 280;
+  const chartWidth = 320;
+  const chartHeight = 220;
+  const controlInitialX = 20;
+  const controlInitialY = viewportHeight - controlHeight - 20;
+  const chartInitialX = controlInitialX + controlWidth + 20;
+  const chartInitialY = viewportHeight - chartHeight - 20;
+
   return (
     <div className="map-wrapper" style={{ position: 'relative', flexGrow: 1, height: '100vh', width: '100%' }}>
       <div id="map" style={{ height: '100%', width: '100%' }}></div>
@@ -386,7 +397,30 @@ const MapContainer = forwardRef((props, ref) => {
         >
           🛰️ Satélite
         </button>
+        {props.PitchControl}
       </div>
+
+      {props.MapOverlayControls && (
+        <ResizableDraggableContainer 
+          defaultWidth={controlWidth}
+          defaultHeight={controlHeight}
+          defaultX={controlInitialX}
+          defaultY={controlInitialY}
+        >
+          {props.MapOverlayControls}
+        </ResizableDraggableContainer>
+      )}
+
+      {props.MapOverlayCharts && (
+        <ResizableDraggableContainer 
+          defaultWidth={chartWidth}
+          defaultHeight={chartHeight}
+          defaultX={chartInitialX}
+          defaultY={chartInitialY}
+        >
+          {props.MapOverlayCharts}
+        </ResizableDraggableContainer>
+      )}
     </div>
   );
 });

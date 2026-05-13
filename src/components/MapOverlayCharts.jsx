@@ -5,11 +5,12 @@ function MapOverlayCharts({ elevationData, currentIndex, pointsCount, cumulative
 
   const [hoverInfo, setHoverInfo] = useState({ visible: false, x: 0, altitude: 0, distance: 0 });
   const svgRef = useRef(null);
+  const containerRef = useRef(null);
 
-  const width = 1000;
-  const height = 100; // Aumentado para dar espaço aos rótulos
+  const svgWidth = 1000;
+  const svgHeight = 100;
   const padding = 2;
-  const labelHeight = 20; // Espaço reservado para os marcadores de km
+  const labelHeight = 20;
 
   const maxElev = Math.max(...elevationData);
   const minElev = Math.min(...elevationData);
@@ -17,29 +18,29 @@ function MapOverlayCharts({ elevationData, currentIndex, pointsCount, cumulative
 
   // Gerar pontos para o gráfico de Elevação (Área)
   const elevPoints = elevationData.map((elev, i) => {
-    const x = (cumulativeDistances[i] / totalDistance) * width;
-    const y = (height - labelHeight - padding) - ((elev - minElev) / elevRange) * (height - labelHeight - 2 * padding);
+    const x = (cumulativeDistances[i] / totalDistance) * svgWidth;
+    const y = (svgHeight - labelHeight - padding) - ((elev - minElev) / elevRange) * (svgHeight - labelHeight - 2 * padding);
     return `${x},${y}`;
   }).join(' ');
 
-  const elevArea = `0,${height - labelHeight} ${elevPoints} ${width},${height - labelHeight}`;
+  const elevArea = `0,${svgHeight - labelHeight} ${elevPoints} ${svgWidth},${svgHeight - labelHeight}`;
 
   const handleInteraction = (e) => {
-    if (!svgRef.current || !onProgressChange) return;
-    const rect = svgRef.current.getBoundingClientRect();
+    if (!containerRef.current || !onProgressChange) return;
+    const rect = containerRef.current.getBoundingClientRect();
     const mouseX = e.clientX - rect.left;
     const percent = Math.max(0, Math.min(100, (mouseX / rect.width) * 100));
     onProgressChange(percent);
   };
 
   const handleMouseMove = (e) => {
-    if (!svgRef.current) return;
-    const rect = svgRef.current.getBoundingClientRect();
+    if (!containerRef.current || !svgRef.current) return;
+    const rect = containerRef.current.getBoundingClientRect();
     const mouseX = e.clientX - rect.left;
-    const svgX = (mouseX / rect.width) * width;
+    const svgX = (mouseX / rect.width) * svgWidth;
     
     // Converte posição X do SVG para distância em Km
-    const dist = (svgX / width) * totalDistance;
+    const dist = (svgX / svgWidth) * totalDistance;
     
     // Encontra o índice do ponto mais próximo baseado na distância acumulada
     let closestIdx = 0;
@@ -59,38 +60,55 @@ function MapOverlayCharts({ elevationData, currentIndex, pointsCount, cumulative
       distance: cumulativeDistances[closestIdx]
     });
 
-    // Se o botão do mouse estiver pressionado (drag), atualiza o progresso
     if (e.buttons === 1) {
       handleInteraction(e);
     }
   };
 
   // Posição do cursor de progresso
-  const cursorX = (currentDistance / totalDistance) * width;
+  const cursorX = (currentDistance / totalDistance) * svgWidth;
 
   // Gerar marcadores de quilometragem baseados na distância total
   const interval = totalDistance > 100 ? 20 : (totalDistance > 50 ? 10 : (totalDistance > 10 ? 5 : 1));
   const kmMarkers = [];
   for (let d = interval; d < totalDistance; d += interval) {
     kmMarkers.push({
-      x: (d / totalDistance) * width,
+      x: (d / totalDistance) * svgWidth,
       label: `${d}km`
     });
   }
 
   return (
-    <div className="map-overlay-charts">
-      <div className="overlay-chart-labels">
+    <div className="map-overlay-charts"
+      ref={containerRef}
+      style={{
+        width: '100%',
+        height: '100%',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '8px'
+      }}
+    >
+      <div style={{
+        padding: '4px 8px 0 8px',
+        fontSize: '12px',
+        fontWeight: '600'
+      }}>
         <span style={{ color: '#FC5200' }}>● Elevação</span>
       </div>
       <svg 
         ref={svgRef}
-        viewBox={`0 0 ${width} ${height}`} 
+        viewBox={`0 0 ${svgWidth} ${svgHeight}`}
         preserveAspectRatio="none"
         onClick={handleInteraction}
         onMouseMove={handleMouseMove}
         onMouseLeave={() => setHoverInfo({ ...hoverInfo, visible: false })}
-        style={{ cursor: 'pointer' }}
+        style={{ 
+          flex: 1,
+          cursor: 'pointer',
+          width: '100%',
+          height: '100%'
+        }}
       >
         <defs>
           <linearGradient id="overlayElevGradient" x1="0%" y1="0%" x2="0%" y2="100%">
@@ -112,8 +130,8 @@ function MapOverlayCharts({ elevationData, currentIndex, pointsCount, cumulative
         {/* Marcadores de Quilometragem (Eixo X) */}
         {kmMarkers.map((marker, idx) => (
           <g key={idx}>
-            <line x1={marker.x} y1={height - labelHeight} x2={marker.x} y2={height - labelHeight + 5} stroke="#666" strokeWidth="1" />
-            <text x={marker.x} y={height - 5} fontSize="10" fill="#888" textAnchor="middle">
+            <line x1={marker.x} y1={svgHeight - labelHeight} x2={marker.x} y2={svgHeight - labelHeight + 5} stroke="#666" strokeWidth="1" />
+            <text x={marker.x} y={svgHeight - 5} fontSize="10" fill="#888" textAnchor="middle">
               {marker.label}
             </text>
           </g>
@@ -122,9 +140,9 @@ function MapOverlayCharts({ elevationData, currentIndex, pointsCount, cumulative
         {/* Tooltip de Hover */}
         {hoverInfo.visible && (
           <g>
-            <line x1={hoverInfo.x} y1="0" x2={hoverInfo.x} y2={height - labelHeight} stroke="#333" strokeWidth="1" strokeDasharray="4,2" />
+            <line x1={hoverInfo.x} y1="0" x2={hoverInfo.x} y2={svgHeight - labelHeight} stroke="#333" strokeWidth="1" strokeDasharray="4,2" />
             <rect 
-              x={hoverInfo.x > width - 100 ? hoverInfo.x - 105 : hoverInfo.x + 5} 
+              x={hoverInfo.x > svgWidth - 100 ? hoverInfo.x - 105 : hoverInfo.x + 5} 
               y="5" 
               width="95" 
               height="35" 
@@ -132,7 +150,7 @@ function MapOverlayCharts({ elevationData, currentIndex, pointsCount, cumulative
               fill="rgba(0,0,0,0.8)" 
             />
             <text 
-              x={hoverInfo.x > width - 100 ? hoverInfo.x - 100 : hoverInfo.x + 10} 
+              x={hoverInfo.x > svgWidth - 100 ? hoverInfo.x - 100 : hoverInfo.x + 10} 
               y="20" 
               fill="white" 
               fontSize="12" 
@@ -141,7 +159,7 @@ function MapOverlayCharts({ elevationData, currentIndex, pointsCount, cumulative
               {hoverInfo.altitude.toFixed(0)} m
             </text>
             <text 
-              x={hoverInfo.x > width - 100 ? hoverInfo.x - 100 : hoverInfo.x + 10} 
+              x={hoverInfo.x > svgWidth - 100 ? hoverInfo.x - 100 : hoverInfo.x + 10} 
               y="33" 
               fill="#ccc" 
               fontSize="10"
@@ -152,8 +170,8 @@ function MapOverlayCharts({ elevationData, currentIndex, pointsCount, cumulative
         )}
 
         {/* Cursor de Progresso */}
-        <line x1={cursorX} y1="0" x2={cursorX} y2={height - labelHeight} stroke="#333" strokeWidth="2" />
-        <circle cx={cursorX} cy={height - labelHeight - 2} r="3" fill="#333" />
+        <line x1={cursorX} y1="0" x2={cursorX} y2={svgHeight - labelHeight} stroke="#333" strokeWidth="2" />
+        <circle cx={cursorX} cy={svgHeight - labelHeight - 2} r="3" fill="#333" />
       </svg>
     </div>
   );

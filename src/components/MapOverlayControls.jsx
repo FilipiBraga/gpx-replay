@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React from 'react';
 import { formatTime } from '../utils/calculations';
 import '../styles/MapOverlayControls.css';
 
@@ -16,56 +16,6 @@ function MapOverlayControls({
   totalTime,
   currentTime
 }) {
-  const [position, setPosition] = useState({ x: window.innerWidth - 340, y: window.innerHeight - 420 });
-  const [isDragging, setIsDragging] = useState(false);
-  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
-  const containerRef = useRef(null);
-
-  useEffect(() => {
-    // Inicializar posição padrão no canto inferior direito
-    setPosition({ x: window.innerWidth - 340, y: window.innerHeight - 420 });
-  }, []);
-
-  const handleMouseDown = (e) => {
-    setIsDragging(true);
-    const rect = containerRef.current.getBoundingClientRect();
-    setDragOffset({
-      x: e.clientX - rect.left,
-      y: e.clientY - rect.top
-    });
-  };
-
-  useEffect(() => {
-    if (!isDragging) return;
-
-    const handleMouseMove = (e) => {
-      let newX = e.clientX - dragOffset.x;
-      let newY = e.clientY - dragOffset.y;
-
-      // Limitar movimento dentro da janela (com margem)
-      const margin = 10;
-      newX = Math.max(margin, Math.min(newX, window.innerWidth - 320 - margin));
-      newY = Math.max(margin, Math.min(newY, window.innerHeight - margin));
-
-      setPosition({
-        x: newX,
-        y: newY
-      });
-    };
-
-    const handleMouseUp = () => {
-      setIsDragging(false);
-    };
-
-    document.addEventListener('mousemove', handleMouseMove);
-    document.addEventListener('mouseup', handleMouseUp);
-
-    return () => {
-      document.removeEventListener('mousemove', handleMouseMove);
-      document.removeEventListener('mouseup', handleMouseUp);
-    };
-  }, [isDragging, dragOffset]);
-
   const handleProgressTrackClick = (e) => {
     const rect = e.currentTarget.getBoundingClientRect();
     const percent = ((e.clientX - rect.left) / rect.width) * 100;
@@ -73,20 +23,7 @@ function MapOverlayControls({
   };
 
   return (
-    <div 
-      ref={containerRef}
-      className="map-overlay-controls"
-      style={{
-        left: `${position.x}px`,
-        top: `${position.y}px`,
-        cursor: isDragging ? 'grabbing' : 'grab'
-      }}
-    >
-      {/* Handle de Arraste */}
-      <div className="overlay-drag-handle" onMouseDown={handleMouseDown} title="Arraste para mover">
-        <span className="drag-icon">⋮⋮</span>
-      </div>
-
+    <div className="map-overlay-controls">
       {/* Barra de Progresso com Tempo */}
       <div className="overlay-progress-section">
         <div className="progress-label">

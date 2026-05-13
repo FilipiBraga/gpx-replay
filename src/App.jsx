@@ -21,6 +21,7 @@ function App() {
   const [route, setRoute] = useState(null)
   const [isBuilding, setIsBuilding] = useState(false)
   const [eleMinMax, setEleMinMax] = useState({ min: 0, max: 0 })
+  const [mapPitch, setMapPitch] = useState(45)
   
   const initialStats = {
     distance: 0,
@@ -43,7 +44,6 @@ function App() {
     totalTime: 0
   });
   const [isDrawing, setIsDrawing] = useState(false)
-  const [mapPitch, setMapPitch] = useState(45)
 
   const animationRef = useRef(null)
   const lastTimeRef = useRef(0)
@@ -311,13 +311,6 @@ function App() {
     updateStatsOnly(currentIndex);
   };
 
-  const handlePitchChange = (newPitch) => {
-    setMapPitch(newPitch);
-    if (mapRef.current) {
-      mapRef.current.setPitch(newPitch);
-    }
-  };
-
   const handleClearGPXData = () => {
     setGpxData(null);
     setCurrentIndex(0);
@@ -346,6 +339,13 @@ function App() {
     updateStatsOnly(index)
   }
 
+  const handlePitchChange = (newPitch) => {
+    setMapPitch(newPitch)
+    if (mapRef.current) {
+      mapRef.current.setPitch(newPitch)
+    }
+  }
+
   return (
     <div className="app">
       <Header />
@@ -360,40 +360,48 @@ function App() {
         />
         <div className="main-content" style={{ position: 'relative', display: 'flex', flex: 1 }}>
           {(gpxData || route) && (
-            <>
-              <button className="clear-gpx-button" onClick={handleClearGPXData}>X Limpar GPX</button>
-              <MapOverlayCharts 
-                elevationData={elevation}
-                currentIndex={currentIndex}
-                pointsCount={gpxData?.points?.length || route?.points?.length}
-                cumulativeDistances={gpxData?.cumulativeDistances || route?.points?.cumulativeDistances}
-                totalDistance={stats.totalDistance}
-                currentDistance={stats.distance}
-                onProgressChange={handleProgressClick}
-              />
-              <MapOverlayControls
-                isPlaying={isPlaying}
-                isPaused={isPaused}
-                onPlay={handlePlay}
-                onPause={handlePause}
-                onResume={handleResume}
-                onReset={handleReset}
-                animationSpeed={animationSpeed}
-                onSpeedChange={setAnimationSpeed}
-                stats={stats}
-                onProgressClick={handleProgressClick}
-                totalTime={stats.totalTime}
-                currentTime={stats.currentTime}
-              />
-              <PitchControl 
-                pitch={mapPitch} 
-                onPitchChange={handlePitchChange}
-              />
-            </>
+            <button className="clear-gpx-button" onClick={handleClearGPXData}>X Limpar GPX</button>
           )}
           <MapContainer 
             ref={mapRef} 
             onMarkerDrag={handleMarkerDrag}
+            MapOverlayCharts={
+              (gpxData || route) && (
+                <MapOverlayCharts 
+                  elevationData={elevation}
+                  currentIndex={currentIndex}
+                  pointsCount={gpxData?.points?.length || route?.points?.length}
+                  cumulativeDistances={gpxData?.cumulativeDistances || route?.points?.cumulativeDistances}
+                  totalDistance={stats.totalDistance}
+                  currentDistance={stats.distance}
+                  onProgressChange={handleProgressClick}
+                />
+              )
+            }
+            MapOverlayControls={
+              (gpxData || route) && (
+                <MapOverlayControls
+                  isPlaying={isPlaying}
+                  isPaused={isPaused}
+                  onPlay={handlePlay}
+                  onPause={handlePause}
+                  onResume={handleResume}
+                  onReset={handleReset}
+                  animationSpeed={animationSpeed}
+                  onSpeedChange={setAnimationSpeed}
+                  stats={stats}
+                  onProgressClick={handleProgressClick}
+                  totalTime={stats.totalTime}
+                  currentTime={stats.currentTime}
+                />
+              )
+            }
+            PitchControl={
+              <PitchControl 
+                pitch={mapPitch}
+                onPitchChange={handlePitchChange}
+              />
+            }
           />
         </div>
       </div>

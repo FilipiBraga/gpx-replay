@@ -546,7 +546,8 @@ button:active:not(:disabled) {
   left: 15px;
   z-index: 10;
   display: flex;
-  gap: 5px;
+  gap: 0;
+  align-items: center;
   background: rgba(255, 255, 255, 0.9);
   padding: 4px;
   border-radius: 8px;
@@ -559,6 +560,17 @@ button:active:not(:disabled) {
   font-size: 12px;
   background: transparent;
   color: #333;
+  border: none;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+  height: 32px;
+  display: flex;
+  align-items: center;
+}
+
+.style-btn:hover {
+  background: rgba(0, 0, 0, 0.05);
 }
 
 .style-btn.active {
